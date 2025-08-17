@@ -22,7 +22,7 @@ struct Args {
     mqtt_url: String,
     #[arg(short('A'), long, default_value_t = 30)]
     threshold_active: u64,
-    #[arg(short('I'), long, default_value_t=5*60)]
+    #[arg(short('I'), long, default_value_t = 5*60)]
     threshold_idle: u64,
     #[arg(short('r'), long, default_value = "modo")]
     mqtt_root_topic: String,
@@ -69,7 +69,7 @@ pub fn run(args: ArgsOs) -> Result<()> {
             if idle_sec > previous_published_idle_sec {
                 continue;
             }
-            // Publish last active timestamp if modified
+            // Publish last active timestamp
             let now = Utc::now().trunc_subsecs(0);
             let idle_ts = now - Duration::from_secs(idle_sec);
             mqtt_publish(
