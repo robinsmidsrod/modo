@@ -1,0 +1,20 @@
+[package]
+name = "modo"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Robin Smidsrød <robin@smidsrod.no>"]
+description = "Monitor and control your Windows PC with MQTT"
+keywords = ["monitoring", "iot", "mqtt"]
+categories = ["command-line-utilities"]
+readme = "README.md"
+repository = "https://github.com/robinsmidsrod/modo"
+
+[dependencies]
+chrono = "0.4.41"
+clap = { version = "4.5.45", features = ["derive"] }
+derive_more = { version = "2.0.1", features = ["from"] }
+hostname = "0.4.1"
+rumqttc = { version = "0.24.0", features = ["url"] }
+user-idle = "0.6.0"
+wild = "2.2.1"
