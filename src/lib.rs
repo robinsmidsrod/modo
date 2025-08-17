@@ -36,7 +36,7 @@ pub fn run(args: ArgsOs) -> Result<()> {
     println!("MQTT base topic: {topic}");
     let mut mqtt_options = MqttOptions::parse_url(args.mqtt_url)?;
     mqtt_options.set_last_will(LastWill::new(
-        format!("{}/{}/connected", &args.mqtt_root_topic, hostname),
+        format!("{topic}/connected"),
         "false",
         QoS::AtLeastOnce,
         true,
@@ -57,28 +57,14 @@ pub fn run(args: ArgsOs) -> Result<()> {
             };
             let idle_sec = idle.as_seconds();
             // Publish idle_seconds
-            if let Err(e) = mqtt_client.publish(
-                format!("{topic}/idle_seconds"),
-                QoS::AtLeastOnce,
-                true,
-                idle_sec.to_string(),
-            ) {
-                eprintln!("mqtt_publish_idle_seconds_error={e}");
-            }
+            mqtt_publish(&mqtt_client, &topic, "idle_seconds", idle_sec.to_string());
             // Publish idle_status
             let idle_status = match idle_sec {
                 i if i < args.threshold_active => "active",
                 i if i < args.threshold_idle => "idle",
                 _ => "away",
             };
-            if let Err(e) = mqtt_client.publish(
-                format!("{topic}/idle_status"),
-                QoS::AtLeastOnce,
-                true,
-                idle_status,
-            ) {
-                eprintln!("mqtt_publish_idle_status_error={e}");
-            }
+            mqtt_publish(&mqtt_client, &topic, "idle_status", idle_status);
             // If idle_sec is increasing, don't publish
             if idle_sec > previous_published_idle_sec {
                 continue;
@@ -86,14 +72,12 @@ pub fn run(args: ArgsOs) -> Result<()> {
             // Publish last active timestamp if modified
             let now = Utc::now().trunc_subsecs(0);
             let idle_ts = now - Duration::from_secs(idle_sec);
-            if let Err(e) = mqtt_client.publish(
-                format!("{topic}/last_active_timestamp"),
-                QoS::AtLeastOnce,
-                true,
+            mqtt_publish(
+                &mqtt_client,
+                &topic,
+                "last_active_timestamp",
                 idle_ts.to_rfc3339(),
-            ) {
-                eprintln!("mqtt_publish_last_active_timestamp_error={e}");
-            }
+            );
             previous_published_idle_sec = idle_sec;
         }
     });
@@ -109,14 +93,7 @@ pub fn run(args: ArgsOs) -> Result<()> {
                             c.code, c.session_present
                         );
                         // Published connected status
-                        if let Err(e) = mqtt_client_main.publish(
-                            format!("{topic_main}/connected"),
-                            QoS::AtLeastOnce,
-                            true,
-                            "true",
-                        ) {
-                            eprintln!("mqtt_publish_connected_error={e}");
-                        }
+                        mqtt_publish(&mqtt_client_main, &topic_main, "connected", "true");
                     }
                     Packet::PubAck(_) => {}
                     Packet::PingResp => {}
@@ -140,4 +117,16 @@ pub fn run(args: ArgsOs) -> Result<()> {
         thread::sleep(Duration::from_millis(100));
     }
     Ok(())
+}
+
+/// Publish payload on specified MQTT topic
+fn mqtt_publish<V: Into<Vec<u8>>>(client: &Arc<Client>, base_topic: &str, topic: &str, payload: V) {
+    if let Err(e) = client.publish(
+        [base_topic, topic].join("/"),
+        QoS::AtLeastOnce,
+        true,
+        payload,
+    ) {
+        eprintln!("mqtt_publish_{topic}_error={e}");
+    }
 }
